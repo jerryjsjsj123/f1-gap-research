@@ -1,0 +1,14 @@
+.venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.pem
+*.key
+*credentials*.json
+*:Zone.Identifier
+# 老师给的参考实现压缩包，不属于本项目
+wikipedia-deep-research.zip

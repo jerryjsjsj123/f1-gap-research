@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F1 Gap Research</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --raised: #ffffff;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-3: #85847f;
+    --line: #e4e3df;
+    --line-strong: #cfcec9;
+    --series: #2a78d6;
+    --series-wash: rgba(42, 120, 214, .10);
+    --band: rgba(11, 11, 11, .07);
+    --accent: #c8102e;
+    --user: #ecebe6;
+    --good: #0ca30c;
+    --warn: #b97a00;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --raised: #222220;
+      --ink: #f0efec;
+      --ink-2: #c3c2b7;
+      --ink-3: #8f8e86;
+      --line: #2e2e2b;
+      --line-strong: #454541;
+      --series: #3987e5;
+      --series-wash: rgba(57, 135, 229, .14);
+      --band: rgba(240, 239, 236, .09);
+      --accent: #ff4d5e;
+      --user: #2a2a27;
+      --warn: #e0a020;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--page); color: var(--ink); font: 15px/1.55 var(--sans); }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .shell { max-width: 1280px; margin: 0 auto; padding: 0 16px 24px; display: grid;
+           grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+  @media (max-width: 960px) { .shell { grid-template-columns: minmax(0, 1fr); } }
+
+  /* --- masthead --- */
+  header.mast { grid-column: 1 / -1; padding: 28px 0 4px; border-bottom: 1px solid var(--line); }
+  .kicker { font: 600 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.12; letter-spacing: -.02em; margin: 10px 0 8px; max-width: 22ch; }
+  .lede { color: var(--ink-2); max-width: 68ch; margin: 0 0 16px; font-size: 16px; }
+  .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0 0 18px;
+           border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .facts > div { padding: 12px 14px; border-left: 1px solid var(--line); }
+  .facts > div:first-child { border-left: 0; }
+  .facts h2 { font: 600 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 6px; }
+  .facts p { margin: 0; color: var(--ink-2); font-size: 13.5px; line-height: 1.5; }
+  @media (max-width: 760px) { .facts { grid-template-columns: 1fr; } .facts > div { border-left: 0; border-top: 1px solid var(--line); } .facts > div:first-child { border-top: 0; } }
+
+  /* --- conversation --- */
+  main { min-width: 0; padding-top: 18px; }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .examples span { font: 600 11px/28px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .chip { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 999px; padding: 5px 12px;
+          font-size: 13.5px; text-align: left; }
+  .chip:hover { border-color: var(--ink-2); }
+  .chip small { color: var(--ink-3); font: 11px var(--mono); margin-left: 6px; }
+  #messages { display: flex; flex-direction: column; gap: 16px; }
+  .msg.user { align-self: flex-end; background: var(--user); padding: 9px 14px; border-radius: 14px 14px 4px 14px; max-width: 80%; white-space: pre-wrap; }
+  .msg.assistant { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+  .msg.assistant.pending { color: var(--ink-3); font-style: italic; }
+  .report { overflow-wrap: anywhere; }
+  .report h3 { font-size: 17px; margin: 22px 0 8px; letter-spacing: -.01em; }
+  .report h4 { font-size: 14.5px; margin: 16px 0 4px; }
+  .report p { margin: 8px 0; }
+  .report ul { margin: 8px 0; padding-left: 20px; }
+  .report .table-wrap { overflow-x: auto; margin: 10px 0; }
+  .report table { border-collapse: collapse; font-size: 13.5px; min-width: 100%; }
+  .report th { text-align: left; font: 600 11px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+               padding: 6px 12px 6px 0; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+  .report td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .report td:first-child { white-space: nowrap; font-family: var(--mono); font-size: 12.5px; }
+  .cite { font: 600 11px/1 var(--mono); padding: 2px 5px; margin: 0 1px; border-radius: 4px; border: 1px solid var(--line-strong);
+          background: var(--raised); color: var(--ink-2); vertical-align: 1px; }
+  .cite:hover, .cite:focus-visible { border-color: var(--series); color: var(--ink); outline: none; }
+  .level { display: inline-flex; align-items: center; gap: 5px; font: 600 12px/1 var(--sans); padding: 3px 8px 3px 6px;
+           border-radius: 999px; border: 1px solid var(--line-strong); white-space: nowrap; color: var(--ink); background: var(--raised); }
+  .level::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--ink-3); }
+  .level[data-level="supported"]::before { background: var(--good); border-color: var(--good); }
+  .level[data-level="consistent"]::before { border-color: var(--warn); background: linear-gradient(90deg, var(--warn) 50%, transparent 50%); }
+  .level[data-level="unanswerable"]::before { border-style: dashed; }
+  details.calls { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px; color: var(--ink-2); }
+  details.calls summary { cursor: pointer; font: 600 11px/1.6 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  details.calls ol { margin: 8px 0 0; padding-left: 22px; font: 12px/1.7 var(--mono); }
+  details.calls b { color: var(--ink); font-weight: 600; }
+
+  /* --- composer --- */
+  form.composer { position: sticky; bottom: 0; margin-top: 18px; padding: 12px 0 10px; background: linear-gradient(transparent, var(--page) 22%); }
+  .composer .box { display: flex; gap: 8px; background: var(--raised); border: 1px solid var(--line-strong); border-radius: 12px; padding: 8px; }
+  .composer textarea { flex: 1; border: 0; outline: 0; resize: none; background: transparent; color: var(--ink); font: inherit; padding: 6px 8px; min-height: 40px; max-height: 160px; }
+  .composer button { border: 0; border-radius: 8px; padding: 0 16px; background: var(--ink); color: var(--page); font-weight: 600; }
+  .composer button:disabled { opacity: .45; cursor: default; }
+  .under { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+  .under button { border: 0; background: none; color: var(--ink-3); text-decoration: underline; padding: 0; font-size: 12px; }
+
+  /* --- research log --- */
+  aside { position: sticky; top: 12px; margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+          padding: 14px; max-height: calc(100vh - 24px); overflow-y: auto; }
+  @media (max-width: 960px) { aside { position: static; max-height: none; order: 3; } }
+  aside h2 { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 4px;
+             font: 600 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+  aside h2 time { color: var(--ink-2); letter-spacing: 0; }
+  aside .hint { color: var(--ink-3); font-size: 13px; margin: 8px 0 0; }
+  .step { margin-top: 12px; }
+  .step > .who { font: 600 12px/1.4 var(--mono); display: flex; align-items: center; gap: 6px; }
+  .who .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+  .who.live .dot { background: var(--series); animation: pulse 1s ease-in-out infinite; }
+  .who.done .dot { background: var(--good); }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .step .line { font-size: 12.5px; color: var(--ink-2); margin: 3px 0 0 14px; overflow-wrap: anywhere; }
+  .step .line code { font: 11.5px var(--mono); color: var(--ink); }
+  .round { margin-top: 12px; border-top: 1px dashed var(--line-strong); padding-top: 10px; }
+  .round > .label { font: 600 10.5px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px; margin-top: 8px; }
+  .lane { border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; background: var(--raised); min-width: 0; }
+  .lane .who { font: 600 11px/1.3 var(--mono); }
+  .lane .laps { font: 11px var(--mono); color: var(--ink-3); margin: 2px 0 4px 14px; }
+  .lane .task { font-size: 11.5px; line-height: 1.35; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .lane ul { list-style: none; margin: 6px 0 0; padding: 0; font: 10.5px/1.6 var(--mono); color: var(--ink-2); }
+  .lane li b { color: var(--ink); font-weight: 600; }
+
+  /* --- gap chart --- */
+  .viz { margin: 0 0 14px; position: relative; }
+  .viz .title { font-weight: 600; font-size: 14.5px; }
+  .viz .sub { color: var(--ink-3); font-size: 12.5px; margin-bottom: 4px; }
+  .viz svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+  .viz text { font: 11px var(--sans); fill: var(--ink-3); }
+  .viz .axis-cap { fill: var(--ink-2); font-weight: 600; }
+  .viz .end { fill: var(--ink); font-weight: 600; font-size: 12px; }
+  .viz .tip { position: absolute; pointer-events: none; background: var(--raised); border: 1px solid var(--line-strong); border-radius: 8px;
+              padding: 7px 10px; font-size: 12.5px; line-height: 1.45; box-shadow: 0 4px 16px rgba(0,0,0,.14); min-width: 150px; display: none; z-index: 2; }
+  .viz .tip b { display: block; font-size: 14px; }
+  .viz .tip span { color: var(--ink-2); display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+  .legend i { display: inline-block; vertical-align: -1px; margin-right: 5px; }
+  .viz details { margin-top: 6px; font-size: 12.5px; color: var(--ink-2); }
+  .viz details summary { cursor: pointer; color: var(--ink-3); }
+  .viz details .scroll { max-height: 220px; overflow: auto; margin-top: 6px; border: 1px solid var(--line); border-radius: 8px; }
+  .viz details table { border-collapse: collapse; width: 100%; font: 12px var(--mono); }
+  .viz details th, .viz details td { padding: 4px 10px; text-align: right; border-bottom: 1px solid var(--line); }
+  .viz details th { position: sticky; top: 0; background: var(--surface); color: var(--ink-3); font-weight: 600; }
+
+  /* --- evidence drawer --- */
+  dialog { border: 1px solid var(--line-strong); border-radius: 12px; padding: 0; background: var(--surface); color: var(--ink);
+           width: min(760px, calc(100vw - 32px)); max-height: min(80vh, 720px); }
+  dialog::backdrop { background: rgba(0, 0, 0, .45); }
+  .ev-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+  .ev-head .id { font: 600 11px/1 var(--mono); color: var(--accent); letter-spacing: .1em; }
+  .ev-head h3 { margin: 4px 0 2px; font-size: 16px; }
+  .ev-head p { margin: 0; color: var(--ink-2); font-size: 12.5px; }
+  .ev-head button { border: 1px solid var(--line-strong); background: var(--raised); border-radius: 8px; padding: 4px 10px; }
+  .ev-body { overflow: auto; max-height: 56vh; }
+  .ev-body table { border-collapse: collapse; width: 100%; font: 12px var(--mono); }
+  .ev-body th { position: sticky; top: 0; background: var(--surface); text-align: left; padding: 7px 12px; border-bottom: 1px solid var(--line-strong);
+                font-weight: 600; color: var(--ink-2); font-family: var(--sans); font-size: 11.5px; vertical-align: bottom; }
+  .ev-body td { padding: 5px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .ev-body .empty { padding: 16px; color: var(--ink-3); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="mast">
+    <div class="kicker">Deep research · 2026 Formula 1 season</div>
+    <h1>Faster driver, smarter pit wall, or lucky timing?</h1>
+    <p class="lede">Two drivers start a race side by side. Ninety minutes later one is 25 seconds up the road.
+      Ask where those seconds came from. A lead agent rebuilds the race lap by lap, sends researchers to
+      investigate the laps where the gap moved, and a writer tells you which explanations the data supports
+      and which it cannot confirm.</p>
+    <div class="facts">
+      <div><h2>Who it's for</h2><p>F1 fans who watched the race, heard the commentary, and want to check the story against the timing data without building a spreadsheet.</p></div>
+      <div><h2>How to use it</h2><p>Name a 2026 race and two drivers. Watch the team work in the research log. Click any <span class="cite" style="cursor:default">E3</span> in the report to see the data behind that sentence.</p></div>
+      <div><h2>What it knows</h2><p id="coverage">Lap times, tyre stints, pit stops and race-control messages from OpenF1; grids and results from Jolpica. Races only: no qualifying, sprints, telemetry or team radio.</p></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="examples" id="examples">
+      <span>Try</span>
+      <button class="chip" type="button">Hamilton was well behind Leclerc for most of the British Grand Prix. How did he finish less than a second behind?</button>
+      <button class="chip" type="button">Where did Russell lose 30 seconds to Antonelli in the Spanish Grand Prix in Madrid?</button>
+      <button class="chip" type="button">Why did Russell finish 43 seconds behind his teammate Antonelli in Miami?</button>
+      <button class="chip" type="button">Why was Hamilton so slow in Brazil?<small>asks you back</small></button>
+    </div>
+    <div id="messages" aria-live="polite"></div>
+    <form class="composer" id="composer">
+      <div class="box">
+        <textarea id="input" rows="1" placeholder="Which race, which two drivers?" aria-label="Your question"></textarea>
+        <button id="send" type="submit">Ask</button>
+      </div>
+      <div class="under">
+        <span>A full investigation takes about 30 to 60 seconds. Follow-up questions keep the same race and drivers.</span>
+        <button type="button" id="reset">New conversation</button>
+      </div>
+    </form>
+  </main>
+
+  <aside aria-label="Research log">
+    <h2><span>Research log</span><time id="clock"></time></h2>
+    <div id="log"><p class="hint">When you ask a question, this panel shows the Lead planning, the Researchers working side by side, and the Writer finishing the report.</p></div>
+  </aside>
+</div>
+
+<dialog id="drawer">
+  <div class="ev-head">
+    <div><div class="id" id="ev-id"></div><h3 id="ev-title"></h3><p id="ev-meta"></p></div>
+    <button type="button" id="ev-close">Close</button>
+  </div>
+  <div class="ev-body" id="ev-body"></div>
+</dialog>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+const SVG = (tag, attrs = {}, text) => { const n = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; return n; };
+
+let sessionId = null;
+let busy = false;
+const evidence = {};  // Evidence id -> what the server returned for it
+
+// ---------- the Gap chart ----------
+
+function niceStep(span, target) {
+  const raw = span / target, pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  return [1, 2, 5, 10].map((m) => m * pow).find((s) => s >= raw);
+}
+
+function drawChart(host, chart) {
+  const { a, b } = chart;
+  host.replaceChildren();
+  const final = chart.final_gap;
+  host.append(el("div", "title", `Gap between ${a} and ${b}, lap by lap`));
+  const official = chart.official_margin == null ? "" : ` (official margin ${Math.abs(chart.official_margin).toFixed(1)}s)`;
+  host.append(el("div", "sub", `${chart.race}. After lap ${chart.points[chart.points.length - 1].lap}: ${a} ${Math.abs(final).toFixed(1)}s ${final >= 0 ? "behind" : "ahead of"} ${b} by lap timestamps${official}.`));
+  const frame = el("div"); frame.style.position = "relative"; host.append(frame);
+  const tip = el("div", "tip"); frame.append(tip);
+
+  // Each plotted value is "seconds A is ahead": up is good for A.
+  const pts = [{ lap: 0, gap: 0, change: 0 }, ...chart.points].map((p) => ({ ...p, v: -p.gap }));
+  const laps = pts[pts.length - 1].lap;
+  const rows = [[], []];  // investigated brackets, stacked so overlapping ranges don't collide
+  for (const r of chart.investigated || []) {
+    const row = rows.find((items) => items.every((o) => r.lap_start > o.lap_end || r.lap_end < o.lap_start)) || rows[1];
+    row.push(r);
+  }
+  const bracketRows = rows.filter((items) => items.length).length;
+
+  function render() {
+    const W = Math.max(320, frame.clientWidth), H = Math.round(Math.min(340, Math.max(230, W * 0.42))) + bracketRows * 18;
+    const m = { l: 44, r: W < 520 ? 14 : 96, t: 12 + bracketRows * 18, b: 40 };
+    const lo = Math.min(0, ...pts.map((p) => p.v)), hi = Math.max(0, ...pts.map((p) => p.v));
+    const step = niceStep(Math.max(hi - lo, 2), 5);
+    const y0 = Math.floor(lo / step) * step, y1 = Math.ceil(hi / step) * step;
+    const x = (lap) => m.l + (lap / laps) * (W - m.l - m.r);
+    const y = (v) => m.t + (1 - (v - y0) / (y1 - y0 || 1)) * (H - m.t - m.b);
+    const svg = SVG("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `Line chart of the gap between ${a} and ${b} over ${laps} laps` });
+
+    // Neutralised laps: a quiet band behind everything.
+    for (const n of chart.neutralisations) {
+      const from = Math.max(0, n.lap_start - 1), to = Math.min(laps, n.lap_end);
+      if (to <= from) continue;
+      svg.append(SVG("rect", { x: x(from), y: m.t, width: Math.max(2, x(to) - x(from)), height: H - m.t - m.b, fill: "var(--band)" }));
+      const short = n.kind === "Safety Car" ? "SC" : n.kind === "Virtual Safety Car" ? "VSC" : "RED";
+      svg.append(SVG("text", { x: (x(from) + x(to)) / 2, y: m.t + 11, "text-anchor": "middle", style: "font-size:9.5px;font-weight:600" }, short));
+    }
+    // Recessive grid, with the zero line a step stronger.
+    for (let v = y0; v <= y1 + 1e-9; v += step) {
+      svg.append(SVG("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: Math.abs(v) < 1e-9 ? "var(--line-strong)" : "var(--line)", "stroke-width": 1 }));
+      svg.append(SVG("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end" }, Math.abs(v) < 1e-9 ? "0" : `${Math.abs(v)}s`));
+    }
+    svg.append(SVG("text", { x: m.l + 4, y: m.t + 11, class: "axis-cap" }, hi > 0 ? `▲ ${a} ahead` : ""));
+    svg.append(SVG("text", { x: m.l + 4, y: H - m.b - 6, class: "axis-cap" }, lo < 0 ? `▼ ${a} behind` : ""));
+    const lapStep = niceStep(laps, W < 520 ? 5 : 9);
+    for (let lap = lapStep; lap <= laps; lap += lapStep) {
+      svg.append(SVG("text", { x: x(lap), y: H - m.b + 15, "text-anchor": "middle" }, lap));
+    }
+    svg.append(SVG("text", { x: m.l, y: H - m.b + 15, "text-anchor": "middle" }, "Start"));
+    svg.append(SVG("text", { x: (m.l + W - m.r) / 2, y: H - 4, "text-anchor": "middle" }, "Lap"));
+
+    // What the Researchers investigated: brackets above the plot.
+    rows.filter((items) => items.length).forEach((items, i) => {
+      const by = 10 + i * 18;
+      for (const r of items) {
+        const x1 = x(Math.max(0, r.lap_start - 1)), x2 = x(Math.min(laps, r.lap_end));
+        svg.append(SVG("path", { d: `M${x1},${by + 5} V${by} H${x2} V${by + 5}`, fill: "none", stroke: "var(--ink-3)", "stroke-width": 1 }));
+        const label = (x2 - x1 > 70 ? "Researcher " : "R") + r.agent.replace(/\D/g, "");
+        const text = SVG("text", { x: (x1 + x2) / 2, y: by - 2, "text-anchor": "middle", style: "font-size:10px" }, label);
+        svg.append(text);
+      }
+    });
+
+    // Pit stops along the bottom edge: filled for A, hollow for B.
+    const pit = (lap, filled, nudge) => {
+      const cx = x(lap) + nudge, cy = H - m.b - 1;
+      svg.append(SVG("path", { d: `M${cx - 4.5},${cy} L${cx + 4.5},${cy} L${cx},${cy - 8} Z`, fill: filled ? "var(--ink-2)" : "var(--surface)", stroke: "var(--ink-2)", "stroke-width": 1.25 }));
+    };
+    // When both stop on the same lap, the two markers sit side by side instead of on top of each other.
+    const shared = new Set(chart.drivers[a].pit_laps.filter((lap) => chart.drivers[b].pit_laps.includes(lap)));
+    chart.drivers[b].pit_laps.filter((lap) => lap <= laps).forEach((lap) => pit(lap, false, shared.has(lap) ? 5 : 0));
+    chart.drivers[a].pit_laps.filter((lap) => lap <= laps).forEach((lap) => pit(lap, true, shared.has(lap) ? -5 : 0));
+
+    // The Gap: one series, a wash down to the zero line and a 2px line.
+    const path = pts.map((p, i) => `${i ? "L" : "M"}${x(p.lap).toFixed(1)},${y(p.v).toFixed(1)}`).join("");
+    svg.append(SVG("path", { d: `${path}L${x(laps)},${y(0)}L${x(0)},${y(0)}Z`, fill: "var(--series-wash)" }));
+    svg.append(SVG("path", { d: path, fill: "none", stroke: "var(--series)", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    const last = pts[pts.length - 1];
+    svg.append(SVG("circle", { cx: x(last.lap), cy: y(last.v), r: 4.5, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }));
+    if (m.r > 60) {
+      svg.append(SVG("text", { x: x(last.lap) + 9, y: y(last.v) - 1, class: "end" }, `${Math.abs(last.gap).toFixed(1)}s`));
+      svg.append(SVG("text", { x: x(last.lap) + 9, y: y(last.v) + 12 }, last.gap >= 0 ? "behind" : "ahead"));
+    }
+
+    // Hover: a crosshair that snaps to the nearest lap, and one tooltip.
+    const hair = SVG("line", { y1: m.t, y2: H - m.b, stroke: "var(--ink-3)", "stroke-width": 1, visibility: "hidden" });
+    const dot = SVG("circle", { r: 4.5, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2, visibility: "hidden" });
+    svg.append(hair, dot);
+    const hit = SVG("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent", tabindex: 0,
+                              "aria-label": "Move across the chart, or use the arrow keys, to read the gap on each lap" });
+    svg.append(hit);
+    let at = pts.length - 1;
+    const show = (i) => {
+      at = Math.max(1, Math.min(pts.length - 1, i));
+      const p = pts[at];
+      hair.setAttribute("x1", x(p.lap)); hair.setAttribute("x2", x(p.lap)); hair.setAttribute("visibility", "visible");
+      dot.setAttribute("cx", x(p.lap)); dot.setAttribute("cy", y(p.v)); dot.setAttribute("visibility", "visible");
+      const phase = chart.phases.find((ph) => p.lap >= ph.lap_start && p.lap <= ph.lap_end);
+      const kinds = { start: "the start", green: "green-flag running", pit_cycle: "a pit cycle", neutralised: "neutralised", jump: "a one-lap swing" };
+      tip.replaceChildren(
+        el("b", null, `${Math.abs(p.gap).toFixed(1)}s ${p.gap >= 0 ? "behind" : "ahead"}`),
+        el("span", null, `Lap ${p.lap}: ${a} ${p.gap >= 0 ? "behind" : "ahead of"} ${b}`),
+        el("span", null, `This lap: ${p.change >= 0 ? "lost" : "gained"} ${Math.abs(p.change).toFixed(1)}s`),
+        ...(phase ? [el("span", null, `Laps ${phase.lap_start}-${phase.lap_end}: ${kinds[phase.kind] || phase.kind}`)] : []),
+      );
+      tip.style.display = "block";
+      const left = (x(p.lap) / W) * frame.clientWidth;
+      tip.style.left = `${Math.min(frame.clientWidth - tip.offsetWidth - 4, Math.max(4, left + (left > frame.clientWidth / 2 ? -tip.offsetWidth - 12 : 12)))}px`;
+      tip.style.top = `${Math.max(0, (y(p.v) / H) * svg.clientHeight - tip.offsetHeight - 10)}px`;
+    };
+    const hide = () => { tip.style.display = "none"; hair.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); };
+    hit.addEventListener("pointermove", (e) => {
+      const box = svg.getBoundingClientRect();
+      show(Math.round(((e.clientX - box.left) / box.width * W - m.l) / (W - m.l - m.r) * laps));
+    });
+    hit.addEventListener("pointerleave", hide);
+    hit.addEventListener("focus", () => show(at));
+    hit.addEventListener("blur", hide);
+    hit.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") { show(at - 1); e.preventDefault(); }
+      if (e.key === "ArrowRight") { show(at + 1); e.preventDefault(); }
+    });
+    frame.querySelector("svg")?.remove();
+    frame.prepend(svg);
+  }
+  render();
+  new ResizeObserver(() => render()).observe(frame);
+
+  const tri = (filled) => `<i><svg width="11" height="10" viewBox="0 0 11 10"><path d="M1,9 L10,9 L5.5,1 Z" fill="${filled ? "var(--ink-2)" : "var(--surface)"}" stroke="var(--ink-2)" stroke-width="1.25"/></svg></i>`;
+  const legend = el("div", "legend");
+  legend.innerHTML = `<span>${tri(true)}<span data-a></span> pit stop</span><span>${tri(false)}<span data-b></span> pit stop</span>` +
+    (chart.neutralisations.length ? `<span><i style="width:14px;height:10px;background:var(--band)"></i>Safety Car, Virtual Safety Car or red flag</span>` : "") +
+    ((chart.investigated || []).length ? `<span><i><svg width="16" height="8" viewBox="0 0 16 8"><path d="M1,7 V1 H15 V7" fill="none" stroke="var(--ink-3)"/></svg></i>laps a Researcher investigated</span>` : "");
+  legend.querySelector("[data-a]").textContent = a;
+  legend.querySelector("[data-b]").textContent = b;
+  host.append(legend);
+
+  const details = el("details");
+  details.append(el("summary", null, "Show the lap-by-lap table"));
+  const scroll = el("div", "scroll"), table = el("table");
+  const head = el("tr"); ["Lap", `Gap (s, + = ${a} behind)`, "Change on this lap (s)"].forEach((h) => head.append(el("th", null, h)));
+  table.append(head);
+  for (const p of chart.points) {
+    const tr = el("tr"); [p.lap, p.gap.toFixed(3), (p.change >= 0 ? "+" : "") + p.change.toFixed(3)].forEach((v) => tr.append(el("td", null, v)));
+    table.append(tr);
+  }
+  scroll.append(table); details.append(scroll); host.append(details);
+}
+
+// ---------- reports, citations, Evidence ----------
+
+const LEVELS = ["supported", "consistent", "unanswerable"];
+
+function renderReport(host, markdown) {
+  host.innerHTML = DOMPurify.sanitize(marked.parse(markdown, { gfm: true, breaks: false }));
+  host.querySelectorAll("table").forEach((table) => { const wrap = el("div", "table-wrap"); table.replaceWith(wrap); wrap.append(table); });
+  // Support Levels become badges: a shape and a word, never colour alone.
+  host.querySelectorAll("strong, td").forEach((node) => {
+    const word = node.textContent.trim().replace(/[:：.]$/, "").toLowerCase();
+    if (!LEVELS.includes(word) || node.children.length > (node.tagName === "TD" ? 1 : 0)) return;
+    const badge = el("span", "level", word[0].toUpperCase() + word.slice(1));
+    badge.dataset.level = word;
+    if (node.tagName === "TD") node.replaceChildren(badge); else node.replaceWith(badge);
+  });
+  // [E3] and [E3, E7] become buttons that open the Evidence.
+  const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+  const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+  for (const node of nodes) {
+    if (!/\[E\d+/.test(node.nodeValue)) continue;
+    const frag = document.createDocumentFragment();
+    let rest = node.nodeValue, match;
+    while ((match = rest.match(/\[(E\d+(?:\s*,\s*E\d+)*)\]/))) {
+      frag.append(rest.slice(0, match.index));
+      for (const id of match[1].match(/E\d+/g)) {
+        const button = el("button", "cite", id); button.type = "button"; button.dataset.id = id;
+        button.title = evidence[id] ? `${evidence[id].title} (${evidence[id].source})` : id;
+        frag.append(button);
+      }
+      rest = rest.slice(match.index + match[0].length);
+    }
+    frag.append(rest);
+    node.replaceWith(frag);
+  }
+}
+
+function openEvidence(id) {
+  const item = evidence[id];
+  if (!item) return;
+  $("ev-id").textContent = `EVIDENCE ${id}`;
+  $("ev-title").textContent = item.title;
+  const laps = item.lap_start ? `, laps ${item.lap_start}-${item.lap_end}` : "";
+  $("ev-meta").textContent = `Source: ${item.source} · ${item.race}${laps}`;
+  const body = $("ev-body"); body.replaceChildren();
+  if (!item.rows.length) body.append(el("div", "empty", "This query returned no rows: nothing of this kind was recorded on these laps."));
+  else {
+    const table = el("table"), head = el("tr");
+    item.columns.forEach((c) => head.append(el("th", null, c))); table.append(head);
+    for (const row of item.rows) { const tr = el("tr"); row.forEach((v) => tr.append(el("td", null, v == null ? "" : String(v)))); table.append(tr); }
+    body.append(table);
+  }
+  $("drawer").showModal();
+}
+$("ev-close").addEventListener("click", () => $("drawer").close());
+$("drawer").addEventListener("click", (e) => { if (e.target === $("drawer")) $("drawer").close(); });
+document.addEventListener("click", (e) => { const cite = e.target.closest(".cite[data-id]"); if (cite) openEvidence(cite.dataset.id); });
+
+// ---------- the research log ----------
+
+let clockTimer = null, lanes = {}, rounds = {}, leadStep = null, eventsSeen = 0;
+
+function startLog() {
+  const log = $("log"); log.replaceChildren(); lanes = {}; rounds = {}; leadStep = null; eventsSeen = 0;
+  const started = Date.now();
+  clearInterval(clockTimer);
+  clockTimer = setInterval(() => { $("clock").textContent = `${((Date.now() - started) / 1000).toFixed(0)}s`; }, 250);
+}
+function stopLog() { clearInterval(clockTimer); document.querySelectorAll("#log .who.live").forEach((n) => { n.classList.remove("live"); n.classList.add("done"); }); }
+
+function step(name) {
+  const box = el("div", "step"), who = el("div", "who live"); who.append(el("span", "dot"), el("span", null, name)); box.append(who); $("log").append(box);
+  return box;
+}
+function describe(name, args) {
+  if (name === "gap_overview") return `round ${args.round}, ${args.driver_a} vs ${args.driver_b}`;
+  if (name === "race_overview") return `round ${args.round}`;
+  if (args.lap_start != null) return `laps ${args.lap_start}-${args.lap_end}` + (args.driver_a ? `, ${args.driver_a}/${args.driver_b}` : "");
+  return "";
+}
+const SHORT = { lap_pace: "pace", track_position: "position", pit_stops: "pits", race_events: "events", tyres: "tyres" };
+let pendingNode = null;
+function onEvent(event) {
+  eventsSeen += 1;
+  // The waiting message says what just happened, for anyone who can't see the log (phones).
+  if (pendingNode && pendingNode.classList.contains("pending")) {
+    const now = event.type === "tool" ? `${event.agent} is checking ${SHORT[event.name] || event.name.replace("_", " ")}`
+      : event.type === "researcher_start" ? `${event.agent} is investigating laps ${event.lap_start}-${event.lap_end}`
+      : event.type === "researcher_done" ? `${event.agent} has reported`
+      : event.type === "status" ? `${event.agent} is ${event.text}` : null;
+    if (now) pendingNode.textContent = `${now}…`;
+  }
+  if (event.type === "status" && event.agent === "Lead") {
+    if (!leadStep) leadStep = step("Lead");
+  } else if (event.type === "status" && event.agent === "Writer") {
+    document.querySelectorAll("#log .who.live").forEach((n) => { n.classList.remove("live"); n.classList.add("done"); });
+    const box = step("Writer"); box.append(el("div", "line", event.text));
+  } else if (event.type === "tool" && event.agent === "Lead") {
+    if (!leadStep) leadStep = step("Lead");
+    if (event.name === "research") { leadStep.append(el("div", "line", event.error || "")); return; }
+    const line = el("div", "line"); const code = el("code", null, event.name); line.append(code, ` ${describe(event.name, event.args)}`);
+    if (event.evidence_id) line.append(` → ${event.evidence_id}`);
+    leadStep.append(line);
+  } else if (event.type === "researcher_start") {
+    if (!rounds[event.round]) {
+      const box = el("div", "round");
+      box.append(el("div", "label", event.round === 1 ? "Round 1 · Researchers in parallel" : "Round 2 · going back for what was unexplained"));
+      const grid = el("div", "lanes"); box.append(grid); $("log").append(box); rounds[event.round] = grid;
+    }
+    const lane = el("div", "lane"), who = el("div", "who live"); who.append(el("span", "dot"), el("span", null, event.agent));
+    lane.append(who, el("div", "laps", `laps ${event.lap_start}-${event.lap_end}`), el("div", "task", event.task), el("ul"));
+    lane.title = event.task; rounds[event.round].append(lane); lanes[event.agent] = lane;
+  } else if (event.type === "tool" && lanes[event.agent]) {
+    const li = el("li"); li.append(el("b", null, SHORT[event.name] || event.name), event.evidence_id ? ` ${event.evidence_id}` : " (no data)");
+    lanes[event.agent].querySelector("ul").append(li);
+  } else if (event.type === "researcher_done" && lanes[event.agent]) {
+    const who = lanes[event.agent].querySelector(".who"); who.classList.remove("live"); who.classList.add("done");
+  }
+  const aside = document.querySelector("aside"); aside.scrollTop = aside.scrollHeight;
+}
+
+// ---------- the conversation ----------
+
+function addMessage(role, text) {
+  const node = el("div", `msg ${role}`, text); $("messages").append(node);
+  node.scrollIntoView({ behavior: "smooth", block: "end" });
+  return node;
+}
+
+async function ask(message) {
+  if (busy || !message.trim()) return;
+  busy = true; $("send").disabled = true; $("input").value = ""; $("input").style.height = "auto";
+  addMessage("user", message);
+  const pending = addMessage("assistant pending", "The team is on it…");
+  startLog(); pendingNode = pending;
+  const runId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+  const stream = new EventSource(`progress/${runId}`);
+  stream.onmessage = (e) => { const event = JSON.parse(e.data); if (event.type === "done") stream.close(); else onEvent(event); };
+  stream.onerror = () => stream.close();
+  try {
+    const response = await fetch("chat", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, session_id: sessionId, run_id: runId }) });
+    if (!response.ok) throw new Error(`The server answered ${response.status}.`);
+    const data = await response.json();
+    sessionId = data.session_id;
+    Object.assign(evidence, data.evidence || {});
+    pending.className = "msg assistant"; pending.replaceChildren();
+    if (data.chart) { const viz = el("div", "viz"); pending.append(viz); drawChart(viz, data.chart); }
+    const report = el("div", "report"); pending.append(report); renderReport(report, data.response);
+    if (data.tool_calls.length) {
+      const details = el("details", "calls"), list = el("ol");
+      const agents = new Set(data.tool_calls.map((c) => c.agent));
+      details.append(el("summary", null, `Show the work: ${data.tool_calls.length} tool calls by ${agents.size} agent${agents.size > 1 ? "s" : ""}`));
+      for (const call of data.tool_calls) {
+        const li = el("li"); li.append(el("b", null, call.agent), ` · ${call.name} `, el("span", null, describe(call.name, call.args) || "")); list.append(li);
+      }
+      details.append(list); pending.append(details);
+      if (!eventsSeen) data.tool_calls.forEach((c) => onEvent({ type: "tool", agent: "Lead", name: `${c.agent}: ${c.name}`, args: c.args }));
+    }
+  } catch (error) {
+    pending.className = "msg assistant"; pending.textContent = `That didn't work: ${error.message} Please try again.`;
+  } finally {
+    stream.close(); stopLog(); busy = false; $("send").disabled = false; $("input").focus();
+  }
+}
+
+$("composer").addEventListener("submit", (e) => { e.preventDefault(); ask($("input").value); });
+$("input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); ask($("input").value); } });
+$("input").addEventListener("input", (e) => { e.target.style.height = "auto"; e.target.style.height = `${Math.min(160, e.target.scrollHeight)}px`; });
+$("examples").addEventListener("click", (e) => { const chip = e.target.closest(".chip"); if (chip) ask(chip.firstChild.textContent); });
+$("reset").addEventListener("click", async () => {
+  if (busy) return;
+  if (sessionId) fetch(`clear?session_id=${encodeURIComponent(sessionId)}`, { method: "POST" }).catch(() => {});
+  sessionId = null; $("messages").replaceChildren(); for (const k in evidence) delete evidence[k];
+  $("log").replaceChildren(el("p", "hint", "Ask a question to see the team at work.")); $("clock").textContent = "";
+});
+fetch("races").then((r) => r.json()).then((races) => {
+  if (!races.length) return;
+  const last = races[races.length - 1];
+  $("coverage").textContent = `Lap times, tyre stints, pit stops and race-control messages from OpenF1; grids and results from Jolpica. ` +
+    `${races.length} races of 2026, up to the ${last.name}. Races only: no qualifying, sprints, telemetry or team radio.`;
+}).catch(() => {});
+</script>
+</body>
+</html>
