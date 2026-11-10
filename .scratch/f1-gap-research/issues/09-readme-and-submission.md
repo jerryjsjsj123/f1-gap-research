@@ -4,8 +4,8 @@
 
 **Blocked by:** 05, 06, 07, 08
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] 三个示例问题在线上实测通过，README 里的预期答案与实测一致
-- [ ] 每个示例附无工具、无系统提示词的同模型回答
-- [ ] submission.json 含 deploy_url、authors 为 ["sj3475"]、path 为 "research"
+- [x] 三个示例问题在线上实测通过，README 里的预期答案与实测一致
+- [x] 每个示例附无工具、无系统提示词的同模型回答
+- [x] submission.json 含 deploy_url、authors 为 ["sj3475"]、path 为 "research"

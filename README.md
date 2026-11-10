@@ -6,7 +6,7 @@ Two drivers start a race side by side. Ninety minutes later, one finishes 25 sec
 
 Commentators always have a story. This agent checks the story against the data. It rebuilds a 2026 Formula 1 race lap by lap for two drivers, finds the laps where the gap between them actually moved, sends researchers to investigate each of those stretches in parallel, and reports which explanations the data supports and which ones it cannot confirm.
 
-- **Deployed at:** https://f1-gap-research-1062559193366.europe-west1.run.app (Columbia accounts only)
+- **Deployed at:** https://f1-gap-research-git-1062559193366.europe-west1.run.app (Columbia accounts only)
 - **Path:** Deep Research
 - **Target user:** an F1 fan who watched the race and wants to know how a result came about, but has neither the time nor the tooling to line up lap times, tyre stints and pit stops for two cars.
 
