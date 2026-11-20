@@ -12,3 +12,7 @@ __pycache__/
 *:Zone.Identifier
 # 老师给的参考实现压缩包，不属于本项目
 wikipedia-deep-research.zip
+
+# 本地文件，不公开：部署笔记（含账号和项目信息）和课程作业原文
+/DEPLOYMENT.md
+/task.md

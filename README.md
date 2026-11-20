@@ -314,4 +314,4 @@ The tests cover the arithmetic (the Gap, the Gap Phases, each analysis tool, Evi
 
 ## Deployment
 
-Cloud Run, continuous deployment from this repository's `main` branch with Google's buildpacks, behind IAP for `columbia.edu`. The service runs as a dedicated service account with `roles/aiplatform.user`, one instance at most (sessions are kept in memory), with `GOOGLE_CLOUD_PROJECT` as its only environment variable. No secrets are needed. Steps are in `DEPLOYMENT.md`.
+Cloud Run, continuous deployment from this repository's `main` branch with Google's buildpacks, behind IAP for `columbia.edu`. The service runs as a dedicated service account with `roles/aiplatform.user`, one instance at most (sessions are kept in memory), with `GOOGLE_CLOUD_PROJECT` as its only environment variable. No secrets are needed.

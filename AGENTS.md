@@ -2,7 +2,7 @@
 
 ## 部署
 
-部署到 Google Cloud Run，以及排查部署、构建、线上访问问题之前，先阅读 `DEPLOYMENT.md`，按其中的步骤和检查项操作。
+部署到 Google Cloud Run，以及排查部署、构建、线上访问问题之前，先阅读 `DEPLOYMENT.md`（本地文件，不在仓库里），按其中的步骤和检查项操作。
 
 ## Agent skills
 
